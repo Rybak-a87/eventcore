@@ -1,0 +1,146 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    container_name: eventcore
+    hostname: backend
+    env_file:
+      - .env
+    volumes:
+      - ./src:/usr/src/app
+      - ./static_content:/usr/src/static_content
+    depends_on:
+      - postgres_db
+      - rabbitmq
+      - libretranslate
+    ports:
+      - "${SERVER_PORT}:${SERVER_PORT}"
+    restart: always
+#    command: uvicorn src.app.main:app --host 0.0.0.0 --port 8000 --reload
+    stdin_open: true  # Open StDIN for interactive sessions
+    tty: true         # Turn on the terminal (optionally, convenient for iPython)
+#    dns:
+#      - 8.8.8.8
+#      - 8.8.4.4
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "10"
+
+  migrations:
+    build:
+      context: .
+      dockerfile: docker/migrations/Dockerfile
+    container_name: eventcore-migrations
+    env_file:
+      - .env
+    volumes:
+      - ./src:/usr/src/app
+    depends_on:
+      - postgres_db
+    working_dir: /usr/src/app/app/database/migrations
+    command: ["upgrade", "head"]
+    restart: "no"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "2"
+
+  postgres_db:
+#    build:
+#      context: ./docker/database
+#      dockerfile: Dockerfile
+    image: postgres:16
+    container_name: eventcore-pgsql-db
+    restart: always
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+#      - ./docker/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/database/data
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "2"
+
+#  redis:
+#    image: redis:7-alpine
+#    container_name: eventcore-redis
+#    restart: always
+#    ports:
+#      - "6379:6379"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: eventcore-rabbit
+    ports:
+      - "5672:5672"    # broker
+      - "15672:15672"  # web UI
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "2"
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    container_name: eventcore-celery-worker
+    command: celery -A src.app.core.celery_app.celery_app worker --loglevel=info
+    env_file:
+      - .env
+    volumes:
+      - ./src:/usr/src/app
+    depends_on:
+      - backend
+      - rabbitmq
+      - postgres_db
+    restart: always
+
+  nginx:
+    build:
+      context: ./docker/nginx
+      dockerfile: Dockerfile
+    container_name: nginx
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+      - ./docker/nginx/html:/usr/share/nginx/html:ro  # for static files
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "2"
+
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: libretranslate
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - LT_LOAD_ONLY=ru,en
+
+volumes:
+  postgres_data:
+

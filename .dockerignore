@@ -1,0 +1,11 @@
+.git
+.gitignore
+LICENSE
+VERSION
+README.md
+CHANGELOG.md
+docker-compose.yml
+src/app/dev.py
+src/app/dev.py
+
+*Env*
