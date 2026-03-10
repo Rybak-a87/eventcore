@@ -1,5 +1,6 @@
 import os
 
+from pydantic import AnyHttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -24,6 +25,8 @@ class Settings(BaseSettings):
     celery_result_backend: str
 
     libre_url: str
+
+    cors_origins: list[AnyHttpUrl] = []
 
     root_dir: str
     static_content_dir: str

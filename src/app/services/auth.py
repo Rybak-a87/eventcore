@@ -115,7 +115,7 @@ class AuthService:
         refresh, _ = await RefreshToken.update_or_create(session=self.session, user_id=user.id, token_type="refresh",
                                                          defaults={"token": refresh_token})
 
-        # self.update_cookie(response=response, token=refresh_token)
+        self.update_cookie(response=response, token=refresh_token)
 
         return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
