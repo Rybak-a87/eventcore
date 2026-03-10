@@ -57,6 +57,7 @@ services:
 #      dockerfile: Dockerfile
     image: postgres:16
     container_name: eventcore-pgsql-db
+#    TODO
     restart: always
     env_file:
       - .env
