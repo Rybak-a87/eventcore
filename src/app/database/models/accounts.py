@@ -7,15 +7,17 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.enums import LanguageEnum
 from app.database.models.events import SharedEvent, Event
 from app.database.session import Base
-from app.schemas.accounts import UserGet
+from app.schemas.accounts import UserRead
 
 
 class User(Base):
     __tablename__ = "users"
 
-    username: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    username: Mapped[str] = mapped_column(String(64), unique=True, nullable=True)
+    first_name: Mapped[str] = mapped_column(String(255), nullable=True)
+    last_name: Mapped[str] = mapped_column(String(255), nullable=True)
     phone_number: Mapped[str] = mapped_column(String(15), unique=True, nullable=True)
     is_phone_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     photo_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -25,8 +27,6 @@ class User(Base):
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship("RefreshToken", back_populates="user",
                                                                 cascade="all, delete-orphan")
     events: Mapped[list["Event"]] = relationship("Event", back_populates="user", cascade="all, delete-orphan")
-    categories: Mapped[list["EventCategory"]] = relationship("EventCategory", back_populates="user",
-                                                             cascade="all, delete-orphan")
     event_types: Mapped[list["EventType"]] = relationship("EventType", back_populates="user",
                                                            cascade="all, delete-orphan")
     roles: Mapped[list["Role"]] = relationship("Role", secondary="user_roles", back_populates="users")
@@ -41,9 +41,9 @@ class User(Base):
         return events
 
 
-    async def get_contact_users(self, session: AsyncSession, accepted: bool = False) -> list["UserGet"]:
+    async def get_contact_users(self, session: AsyncSession, accepted: bool = False) -> list["UserRead"]:
         contacts = await Contact.get(session=session, user_id=self.id, accepted=accepted)
-        return [UserGet.model_validate(c.contact_user) for c in contacts]
+        return [UserRead.model_validate(c.contact_user) for c in contacts]
 
     def __repr__(self):
         return f"User ID: {self.id} - {self.email}"
@@ -77,3 +77,6 @@ class Contact(Base):
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     user: Mapped["User"] = relationship("User", foreign_keys=[user_id], back_populates="contacts")
+
+    def __repr__(self):
+        return f"{self.user_id} and {self.contact_user_id}"

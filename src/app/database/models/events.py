@@ -18,9 +18,6 @@ class Event(Base):
     type_id: Mapped[int] = mapped_column(ForeignKey("event_types.id", ondelete="RESTRICT"), nullable=False, index=True)
     type: Mapped["EventType"] = relationship("EventType", backref="events")
 
-    category_id: Mapped[int] = mapped_column(ForeignKey("event_categories.id", ondelete="RESTRICT"), nullable=False, index=True)
-    category: Mapped["EventCategory"] = relationship("EventCategory", backref="events")
-
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     user: Mapped["User"] = relationship("User", back_populates="events")
 
@@ -35,7 +32,7 @@ class Event(Base):
     __table_args__ = (
         UniqueConstraint("title", "user_id", name="uq_event_title_user"),
         Index("ix_event_user_active", "user_id", "active"),
-        Index("ix_event_category_datetime", "category_id", "event_datetime"),
+        Index("ix_event_type_datetime", "type_id", "event_datetime"),
     )
 
 
@@ -47,28 +44,12 @@ class EventType(Base):
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     user: Mapped["User | None"] = relationship("User", back_populates="event_types")
 
+    def __repr__(self):
+        return self.name
+
     __table_args__ = (
         UniqueConstraint("name", "user_id", name="uq_type_name_user"),
     )
-
-    def __repr__(self):
-        return self.name
-
-
-class EventCategory(Base):
-    __tablename__ = "event_categories"
-
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-
-    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
-    user: Mapped["User | None"] = relationship("User", back_populates="categories")
-
-    __table_args__ = (
-        UniqueConstraint("name", "user_id", name="uq_category_name_user"),
-    )
-
-    def __repr__(self):
-        return self.name
 
 class EventImage(Base):
     __tablename__ = "event_images"
@@ -79,8 +60,8 @@ class EventImage(Base):
     event_id: Mapped[int] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"), nullable=False)
     event: Mapped["Event"] = relationship("Event", back_populates="images")
 
-    # def get_url(self) -> str:
-    #     return f"{settings.media_dir}/users/{self.image_url}"
+    def __repr__(self):
+        return self.image_url
 
 
 class SharedEvent(Base):
@@ -93,6 +74,9 @@ class SharedEvent(Base):
     event: Mapped["Event"] = relationship("Event", back_populates="shared_with")
     for_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     for_user: Mapped["User"] = relationship("User", back_populates="shared_events")
+
+    def __repr__(self):
+        return f"Event {self.event_id} for {self.for_user_id}"
 
     __table_args__ = (
         UniqueConstraint("event_id", "for_user_id", name="uq_sharedevent_event_for_user"),

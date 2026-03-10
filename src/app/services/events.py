@@ -3,7 +3,6 @@ import uuid
 from pathlib import Path
 from typing import Sequence, List, Any
 from datetime import datetime, timezone
-from unicodedata import category
 
 from fastapi import UploadFile, HTTPException
 from sqlalchemy import select
@@ -12,8 +11,8 @@ from starlette.responses import FileResponse
 
 from app.core.settings import settings
 from app.database.models.accounts import User
-from app.database.models.events import Event, EventCategory, EventType, EventImage
-from app.schemas.events import EventUpdate, EventCreate, EventImageRead, EventRead, EventCategoryRead, EventTypeRead
+from app.database.models.events import Event, EventType, EventImage
+from app.schemas.events import EventUpdate, EventCreate, EventImageRead, EventRead, EventTypeRead
 from app.shared.exceptions import EventNotFound
 from app.tasks.email_tasks import send_event_email
 
@@ -23,11 +22,11 @@ class EventService:
         self.session = session
 
     async def update_event(self, user_id: int, event_id: int, data: EventUpdate) -> Event | None:
-        data_dict = data.model_dump(exclude_unset=True, exclude={"category_name"})
-        if data.category_name:
-            event_category = await (EventCategory
-                        .find_first(session=self.session, name=data.category_name, user_id__in=[user_id, None]))
-            if event_category: data_dict["category_id"] = event_category.id
+        data_dict = data.model_dump(exclude_unset=True, exclude={"type"})
+        if data.type:
+            event_type = await (EventType
+                                .find_first(session=self.session, name=data.type, user_id__in=[user_id, None]))
+            if event_type: data_dict["type_id"] = event_type.id
 
         event = await Event.get_first(session=self.session, id=event_id)
         for field, value in data_dict.items():
@@ -41,32 +40,29 @@ class EventService:
         return {"event_id": event_id, "deleted": deleted}
 
     async def get_user_event(self, user_id: int, event_id: int) -> EventRead:
-        # event = await Event.get_first(session=self.session, user_id=user_id, id=event_id)
-        event = await Event.find_with_related_first(session=self.session, related=[EventType, EventCategory, EventImage],
+        event = await Event.find_with_related_first(session=self.session, related=[EventType, EventImage],
                                                     self_filters={"user_id": user_id, "id": event_id},
                                                     strategy="prefetch")
         if event is None:
             raise EventNotFound()
+        setattr(event, "type", event.type.name)
         return EventRead.model_validate(event)
 
     async def get_user_events(self, user_id: int) -> List[EventRead]:
-        events = await Event.find_with_related(session=self.session, related=[EventType, EventCategory, EventImage],
+        events = await Event.find_with_related(session=self.session, related=[EventType, EventImage],
                                                self_filters={"user_id": user_id}, strategy="prefetch")
+        for event in events:
+            setattr(event, "type_name", event.type.name)
         return [EventRead.model_validate(event) for event in events]
 
     async def create_event(self, user_id: int, data: EventCreate) -> EventRead:
-        data_dict = data.model_dump(exclude_unset=True, exclude={"category", "type"})
-        event_category = await (EventCategory
-                                .find_first(session=self.session, user_id__in=[user_id, None], name=data.category))
-        if not event_category:
-            event_category = await (EventCategory
-                                    .create(session=self.session, user_id=user_id, name=data.category))
-        data_dict["category_id"] = event_category.id
+        data_dict = data.model_dump(exclude_unset=True, exclude={"type"})
         event_type = await EventType.find_first(session=self.session, user_id__in=[user_id, None], name=data.type)
         if not event_type:
             event_type = await EventType.create(session=self.session, user_id=user_id, name=data.type)
         data_dict["type_id"] = event_type.id
         event, _ = await Event.update_or_create(session=self.session, user_id=user_id, **data_dict)
+        setattr(event, "type_name", event_type.name)
         # if files:
         #     await self.__upload_images(user_id=user_id, event=event, files=files)
 
@@ -77,10 +73,6 @@ class EventService:
         # )
         return EventRead.model_validate(event)
     
-    async def get_categories(self, user_id) -> List[EventCategoryRead]:
-        categories = await EventCategory.find(session=self.session, user_id__in=[user_id, None])
-        return [EventCategoryRead.model_validate(c) for c in categories]
-
     async def get_types(self, user_id) -> List[EventTypeRead]:
         types = await EventType.find(session=self.session, user_id__in=[user_id, None])
         return [EventTypeRead.model_validate(t) for t in types]

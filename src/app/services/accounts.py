@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import settings
 from app.database.models.accounts import User
-from app.schemas.accounts import UserGet, UserGetBy, UserUpdate
+from app.schemas.accounts import UserRead, UserGetBy, UserUpdate
 from app.shared.exceptions import UserNotFound
 
 
@@ -30,9 +30,9 @@ class UserService:
             raise UserNotFound()
         return {"detail": "User deleted", "id": user_id}
 
-    async def get_users(self, data: UserGet) -> Sequence[UserGet]:
+    async def get_users(self, data: UserRead) -> Sequence[UserRead]:
         users = await User.get(session=self.session, **data.model_dump(exclude_unset=True))
-        return [UserGet.model_validate(user) for user in users]
+        return [UserRead.model_validate(user) for user in users]
 
     async def get_users_by(self, data: UserGetBy) -> Sequence[User]:
         users = await User.find(session=self.session,
@@ -41,9 +41,9 @@ class UserService:
                                 **data.model_dump(exclude={"order_by", "limit"}, exclude_unset=True))
         return users
 
-    async def current_user(self, user_id: int) -> UserGet:
+    async def current_user(self, user_id: int) -> UserRead:
         user = await User.get_first(session=self.session, id=user_id)
-        return UserGet.model_validate(user)
+        return UserRead.model_validate(user)
 
     async def upload_photo_user(self, user_id: int, file) -> dict:
         filepath = f"{settings.app_dir}/media/users/{user_id}/{file.filename}"

@@ -1,7 +1,7 @@
 from sqladmin import Admin, ModelView
 
 from app.database.models.accounts import User, Role, Contact
-from app.database.models.events import Event, EventType, EventCategory, EventImage, SharedEvent
+from app.database.models.events import Event, EventType, EventImage, SharedEvent
 from app.database.session import engine
 
 
@@ -34,7 +34,6 @@ class UserAdmin(ModelView, model=User):
         "photo_url",
         "language",
         "events",
-        "categories",
         "roles",
         "contacts",
         "shared_events",
@@ -52,20 +51,13 @@ class ContactAdmin(ModelView, model=Contact):
 
 
 class EventAdmin(ModelView, model=Event):
-    column_list = [Event.id, Event.title, Event.active, Event.category]
+    column_list = [Event.id, Event.title, Event.active]
 
 
 class EventTypeAdmin(ModelView, model=EventType):
     column_searchable_list = [EventType.name]
     form_rules = ["name"]
     column_list = [EventType.id, EventType.name]
-
-
-class EventCategoryAdmin(ModelView, model=EventCategory):
-    name_plural = "Event Categories"
-    form_rules = ["name"]
-    column_list = [EventCategory.id, EventCategory.name]
-
 
 class SharedEventAdmin(ModelView, model=SharedEvent):
     column_list = [SharedEvent.id, SharedEvent.event, SharedEvent.for_user,
@@ -83,6 +75,5 @@ def get_admin(app) -> None:
     admin.add_view(ContactAdmin)
     admin.add_view(EventAdmin)
     admin.add_view(EventTypeAdmin)
-    admin.add_view(EventCategoryAdmin)
     admin.add_view(SharedEventAdmin)
     admin.add_view(EventImageAdmin)

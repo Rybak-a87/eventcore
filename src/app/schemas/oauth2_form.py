@@ -8,7 +8,7 @@ class OAuth2AdminForm:
     """
     def __init__(
         self,
-        username: str = Form(...),
+        username: EmailStr = Form(...),
         password: str = Form(...),
     ):
         self.username = username

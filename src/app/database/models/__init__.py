@@ -1,5 +1,5 @@
 from app.database.models.accounts import User, Role, UserRole, Contact
-from app.database.models.events import Event, EventType, EventCategory, EventImage, SharedEvent
+from app.database.models.events import Event, EventType, EventImage, SharedEvent
 from app.database.models.security import RefreshToken
 
 
@@ -11,7 +11,6 @@ __all__ = [
     "Contact",
     "Event",
     "EventType",
-    "EventCategory",
     "EventImage",
     "SharedEvent",
 ]

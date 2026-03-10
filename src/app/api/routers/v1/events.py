@@ -7,7 +7,7 @@ from starlette.responses import FileResponse
 
 from app.api.dependencies import get_event_service, get_current_user
 from app.core.settings import settings
-from app.schemas.events import EventCreate, EventRead, EventsDelete, EventUpdate, EventImageRead, EventCategoryRead, \
+from app.schemas.events import EventCreate, EventRead, EventsDelete, EventUpdate, EventImageRead, \
     EventTypeRead
 from app.services.events import EventService
 
@@ -33,26 +33,13 @@ async def get_events(
     """
     return await service.get_user_events(user_id=user_id)
 
-
-@router.get("/categories", status_code=201, response_model=List[EventCategoryRead])
-async def get_categories(
-    user_id: Annotated[int, Depends(get_current_user)],
-    service: Annotated[EventService, Depends(get_event_service)]
-) -> List[EventCategoryRead]:
-    """
-    ## Get Categories
-
-    """
-    return await service.get_categories(user_id=user_id)
-
-
 @router.get("/types", status_code=201, response_model=List[EventTypeRead])
 async def get_types(
     user_id: Annotated[int, Depends(get_current_user)],
     service: Annotated[EventService, Depends(get_event_service)]
 ) -> List[EventTypeRead]:
     """
-    ## Get Categories
+    ## Get Types
 
     """
     return await service.get_types(user_id=user_id)

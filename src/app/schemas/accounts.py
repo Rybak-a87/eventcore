@@ -9,10 +9,12 @@ from app.database.enums import LanguageEnum
 
 
 class UserUpdate(BaseModel):
-    username: str | None = None
     email: EmailStr | None = None
+    username: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
     phone_number: str | None = None
-    language: LanguageEnum | None = None
+    # language: LanguageEnum | None = None
 
     model_config = {
         "extra": "forbid",  # for .model_dump()
@@ -30,13 +32,16 @@ class UsersUpdate(BaseModel):
     # }
 
 
-class UserGet(BaseModel):
+class UserRead(BaseModel):
     id: int
-    username: str  | None = None
     email: str  | None = None
+    username: str  | None = None
+    first_name: str | None = None
+    last_name: str | None = None
     phone_number: str  | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
+    access_token: str | None = None
 
     model_config = {
         "from_attributes": True

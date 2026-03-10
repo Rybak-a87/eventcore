@@ -5,6 +5,7 @@ from fastapi import UploadFile
 from pydantic import BaseModel, Field, field_serializer
 
 from app.core.settings import settings
+from app.database.models import EventType
 
 
 class EventImageRead(BaseModel):
@@ -22,16 +23,6 @@ class EventImageRead(BaseModel):
     def serialize_datetime(self, value: str):
         return f"{settings.domain}/media/users/{value}"
 
-
-class EventCategoryRead(BaseModel):
-    id: int = Field(...)
-    name: str = Field(...)
-
-    model_config = {
-        "from_attributes": True
-    }
-
-
 class EventTypeRead(BaseModel):
     id: int = Field(...)
     name: str = Field(...)
@@ -41,11 +32,10 @@ class EventTypeRead(BaseModel):
     }
 
 class EventCreate(BaseModel):
+    type: str = Field(min_length=1, max_length=255)
     title: str = Field(min_length=1, max_length=255)
     description: str | None = None
     event_datetime: datetime
-    category: str = Field(min_length=1, max_length=255)
-    type: str = Field(min_length=1, max_length=255)
     is_email_sent: bool | None = None
 
     model_config = {
@@ -55,12 +45,11 @@ class EventCreate(BaseModel):
 
 class EventRead(BaseModel):
     id: int = Field(...)
+    type_name: str =  Field(min_length=1, max_length=255)
     title: str = Field(min_length=1, max_length=255)
     description: str | None = None
     event_datetime: datetime | None = None
-    category: EventCategoryRead
-    type: EventTypeRead
-    images: List[EventImageRead]
+    # images: List[EventImageRead] | None = []
 
     model_config = {
         "from_attributes": True
@@ -75,7 +64,7 @@ class EventUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     event_datetime: datetime | None = None
-    category_name: str | None = None
+    type: str | None = None
 
     model_config = {
         "extra": "forbid",

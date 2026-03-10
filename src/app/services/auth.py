@@ -1,14 +1,18 @@
 from typing import Sequence, Any
 
 from fastapi import Depends, Response, Request
+from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.settings import settings
 from app.database.models import RefreshToken
 from app.database.session import get_session
 from app.domain.accounts.entities import PasswordEntity, WeakPasswordError
 from app.database.models.accounts import User
 from app.core.security import SecurityService
+from app.schemas.accounts import UserRead
 from app.schemas.auth import Register, Authenticate
+from app.schemas.oauth2_form import OAuth2AdminForm
 from app.schemas.security import TokenResponse, AccessTokenResponse
 from app.shared.exceptions import (UserAlreadyTaken, InvalidCredentials, PasswordMustBeDifferent, InvalidToken,
                                    WeakPassword, NotAuthenticated)
@@ -20,87 +24,19 @@ class AuthService:
         self.security = SecurityService()
 
     @staticmethod
-    def update_cookie(response: Response, token: str) -> None:
-        # to HttpOnly cookie
+    def set_token_cookie(response: Response | None, key: str, token: str) -> None:
         if response:
             response.set_cookie(
-                key="refresh_token",
+                key=key,
                 value=token,
                 httponly=True,
-                secure=True,  # True for HTTPS
-                samesite="lax"
+                secure=settings.is_production,  # True for HTTPS
+                samesite="lax",
+                path="/",
             )
-            """
-                axios.interceptors.response.use(
-                    response= > response,
-                async error = > {
-                if (error.response.status === 401)
-                {
-                    const
-                refreshResponse = await axios.post("/refresh", {}, {
-                    withCredentials: true
-                })
-    
-                const
-                newAccess = refreshResponse.data.access_token
-    
-                axios.defaults.headers.common["Authorization"] = `Bearer ${newAccess}
-                `
-    
-                return axios(error.config)
-                }
-    
-                return Promise.reject(error)
-            }
-            )
-        """
-        """
-                    async function apiRequest(url, options = {}) {
-              let response = await fetch(url, {
-                ...options,
-                headers: {
-                  ...options.headers,
-                  Authorization: `Bearer ${accessToken}`
-                }
-              })
-            
-              if (response.status === 401) {
-                // access токен умер
-                const refreshResponse = await fetch("/api/auth/refresh", {
-                  method: "POST",
-                  body: JSON.stringify({
-                    refresh_token: refreshToken
-                  }),
-                  headers: {
-                    "Content-Type": "application/json"
-                  }
-                })
-            
-                if (!refreshResponse.ok) {
-                  // refresh тоже умер — выкидываем на логин
-                  logout()
-                  return
-                }
-            
-                const data = await refreshResponse.json()
-                accessToken = data.access_token
-            
-                // повторяем исходный запрос
-                response = await fetch(url, {
-                  ...options,
-                  headers: {
-                    ...options.headers,
-                    Authorization: `Bearer ${accessToken}`
-                  }
-                })
-              }
-            
-              return response
-            }
-        """
 
-    async def register_user(self, data: Register, response: Response) -> TokenResponse:
-        has_user = await User.exists(session=self.session, username=data.username)
+    async def register_user(self, data: Register, response: Response) -> UserRead:
+        has_user = await User.exists(session=self.session, email=data.email)
         if has_user:
             raise UserAlreadyTaken()
         # entity = PasswordEntity(email=data.email, password=data.password)
@@ -108,34 +44,36 @@ class AuthService:
         #     entity.validate_password()
         # except WeakPasswordError as e:
         #     raise WeakPassword(e)
-        user = await User.create(session=self.session, username=data.username, email=data.email,
+        user = await User.create(session=self.session, username=data.email, email=data.email,
                                  password_hash=self.security.hash_password(data.password))
-        access_token = self.security.create_access_token(user)
         refresh_token = self.security.create_refresh_token(user)
+        access_token = self.security.create_access_token(user)
         refresh, _ = await RefreshToken.update_or_create(session=self.session, user_id=user.id, token_type="refresh",
                                                          defaults={"token": refresh_token})
 
-        self.update_cookie(response=response, token=refresh_token)
+        self.set_token_cookie(response=response, key="refresh_token", token=refresh_token)
+        self.set_token_cookie(response=response, key="access_token", token=access_token)
 
-        return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+        return UserRead.model_validate(user)
 
-    async def authenticate_user(self, login: str, password: str, response: Response) -> TokenResponse:
-        user: Any | None = await User.find_first(session=self.session,
-                                                 or_filters={"email": login, "username": login})
-        if not user or not self.security.verify_password(password, user.password_hash):
+    async def authenticate_user(self, data: OAuth2AdminForm, response: Response) -> UserRead:
+        user: Any | None = await User.find_first(session=self.session, email=data.username)
+        if not user or not self.security.verify_password(data.password, user.password_hash):
             raise InvalidCredentials()
-        access_token = self.security.create_access_token(user)
         refresh_token = self.security.create_refresh_token(user)
+        access_token = self.security.create_access_token(user)
         await RefreshToken.update_or_create(session=self.session, user_id=user.id, token_type="refresh",
                                             defaults={"token": refresh_token})
 
-        self.update_cookie(response=response, token=refresh_token)
+        self.set_token_cookie(response=response, key="refresh_token", token=refresh_token)
+        self.set_token_cookie(response=response, key="access_token", token=access_token)
 
         # refresh_token, created = self.security.check_create_refresh_token(user)
         # if created:
             # await RefreshToken.update_or_create(session=self.session, user_id=user.id, token_type="refresh",
             #                                     defaults={"token": refresh_token})
-        return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+        setattr(user, "access_token", access_token)
+        return UserRead.model_validate(user)
 
     async def password_update(self, user_id: int, current_password: str, new_password: str):
         user: Any | None = await User.get(session=self.session, id=user_id)
@@ -150,19 +88,24 @@ class AuthService:
         return {"detail": "Password changed"}
 
 
-    async def logout_user(self, user_id: int) -> dict[str, Any]:
+    async def logout_user(self, response: Response, user_id: int) -> dict[str, Any]:
         deleted = await RefreshToken.bulk_delete(session=self.session, user_id=user_id)
 
         if deleted == 0:
             raise InvalidToken()
 
+        response.delete_cookie("refresh_token", path="/")
+        response.delete_cookie("access_token", path="/")
+
         return {"detail": "Logged out successfully"}
 
-    async def refresh_access_token(self, request: Request, refresh_token: str | None = None) -> AccessTokenResponse:
+    async def refresh_access_token(
+            self, request: Request, response: Response | None = None, refresh_token: str | None = None
+    ) -> AccessTokenResponse:
         token = refresh_token or request.cookies.get("refresh_token")
         user_id = self.security.get_current_user(token)
 
-        token_in_db = await RefreshToken.exists(session=self.session, token=refresh_token)
+        token_in_db = await RefreshToken.exists(session=self.session, token=token)
         if not token_in_db:
             raise NotAuthenticated()
         user = await User.get_first(session=self.session, id=user_id)
