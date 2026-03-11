@@ -63,7 +63,6 @@ class CRUDMixin:
         if or_filters:
             or_conditions  = cls.__build_conditions(or_filters)
             conditions.append(or_(*or_conditions))
-        print("--------------", *conditions)
         query = select(cls).where(*conditions)
 
         if order_by:

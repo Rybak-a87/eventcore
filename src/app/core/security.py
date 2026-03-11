@@ -12,7 +12,7 @@ from app.database.models import User
 from app.shared.exceptions import InvalidCredentials, NotAuthenticated
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/sign-in/", auto_error=False)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/sign-in-admin/", auto_error=False)
 
 
 class TokenExtractor:

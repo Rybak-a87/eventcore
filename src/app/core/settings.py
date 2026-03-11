@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     libre_url: str
 
-    cors_origins: list[AnyHttpUrl] = []
+    cors_origins: list[AnyHttpUrl] = []  # ["*"]
 
     root_dir: str
     static_content_dir: str
@@ -49,6 +49,10 @@ class Settings(BaseSettings):
         if not self.server_domain:
             return f"http://{self.server_host}:{self.server_port}"
         return f"https://{self.server_domain}"
+
+    @property
+    def allow_origins(self) -> list[str]:
+        return [str(origin).rstrip("/") for origin in self.cors_origins if str(origin)]
 
 
 settings: Settings = Settings()

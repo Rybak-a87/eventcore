@@ -11,7 +11,7 @@ from app.domain.accounts.entities import PasswordEntity, WeakPasswordError
 from app.database.models.accounts import User
 from app.core.security import SecurityService
 from app.schemas.accounts import UserRead
-from app.schemas.auth import Register, Authenticate
+from app.schemas.auth import RegisterAuthenticate, Authenticate
 from app.schemas.oauth2_form import OAuth2AdminForm
 from app.schemas.security import TokenResponse, AccessTokenResponse
 from app.shared.exceptions import (UserAlreadyTaken, InvalidCredentials, PasswordMustBeDifferent, InvalidToken,
@@ -35,7 +35,7 @@ class AuthService:
                 path="/",
             )
 
-    async def register_user(self, data: Register, response: Response) -> UserRead:
+    async def register_user(self, data: RegisterAuthenticate, response: Response) -> UserRead:
         has_user = await User.exists(session=self.session, email=data.email)
         if has_user:
             raise UserAlreadyTaken()
@@ -44,7 +44,7 @@ class AuthService:
         #     entity.validate_password()
         # except WeakPasswordError as e:
         #     raise WeakPassword(e)
-        user = await User.create(session=self.session, username=data.email, email=data.email,
+        user = await User.create(session=self.session, email=data.email,
                                  password_hash=self.security.hash_password(data.password))
         refresh_token = self.security.create_refresh_token(user)
         access_token = self.security.create_access_token(user)
@@ -56,8 +56,8 @@ class AuthService:
 
         return UserRead.model_validate(user)
 
-    async def authenticate_user(self, data: OAuth2AdminForm, response: Response) -> UserRead:
-        user: Any | None = await User.find_first(session=self.session, email=data.username)
+    async def authenticate_user(self, data: RegisterAuthenticate, response: Response) -> UserRead:
+        user: Any | None = await User.find_first(session=self.session, email=data.email)
         if not user or not self.security.verify_password(data.password, user.password_hash):
             raise InvalidCredentials()
         refresh_token = self.security.create_refresh_token(user)
@@ -72,7 +72,6 @@ class AuthService:
         # if created:
             # await RefreshToken.update_or_create(session=self.session, user_id=user.id, token_type="refresh",
             #                                     defaults={"token": refresh_token})
-        setattr(user, "access_token", access_token)
         return UserRead.model_validate(user)
 
     async def password_update(self, user_id: int, current_password: str, new_password: str):
@@ -115,5 +114,12 @@ class AuthService:
         access_token = self.security.create_access_token(user)
         return AccessTokenResponse(access_token=access_token)
 
-    async def authenticate_admin(self, username: str, password: str) -> TokenResponse:
-        pass
+    async def authenticate_admin(self, data: OAuth2AdminForm) -> TokenResponse:
+        user: Any | None = await User.find_first(session=self.session, email=data.username)
+        if not user or not self.security.verify_password(data.password, user.password_hash):
+            raise InvalidCredentials()
+        refresh_token = self.security.create_refresh_token(user)
+        access_token = self.security.create_access_token(user)
+        await RefreshToken.update_or_create(session=self.session, user_id=user.id, token_type="refresh",
+                                            defaults={"token": refresh_token})
+        return TokenResponse(access_token=access_token, refresh_token=refresh_token)

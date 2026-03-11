@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, EmailStr
 
 
-class Register(BaseModel):
+class RegisterAuthenticate(BaseModel):
     email: EmailStr
     password: str = Field(
         min_length=3,
