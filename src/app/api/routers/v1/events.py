@@ -7,8 +7,8 @@ from starlette.responses import FileResponse
 
 from app.api.dependencies import get_event_service, get_current_user
 from app.core.settings import settings
-from app.schemas.events import EventCreate, EventRead, EventsDelete, EventUpdate, EventImageRead, \
-    EventTypeRead
+from app.schemas.events import EventCreate, EventRead, EventUpdate, EventImageRead, \
+    EventTypeRead, EventReadDetail
 from app.services.events import EventService
 
 
@@ -17,9 +17,6 @@ router = APIRouter(
     tags=["Events"],
     # dependencies=[Depends(get_current_user)]
 )
-
-
-
 
 
 @router.get("/list", status_code=201, response_model=List[EventRead])
@@ -45,12 +42,12 @@ async def get_types(
     return await service.get_types(user_id=user_id)
 
 
-@router.get("/{event_id}", status_code=201, response_model=EventRead)
+@router.get("/{event_id}", status_code=201, response_model=EventReadDetail)
 async def get_event(
     event_id: int,
     user_id: Annotated[int, Depends(get_current_user)],
     service: Annotated[EventService, Depends(get_event_service)]
-) -> EventRead:
+) -> EventReadDetail:
     """
     ## Get Event
 
@@ -120,7 +117,7 @@ async def delete_event(
     ## Delete Event
 
     """
-    return await service.delete_events(user_id=user_id, event_id=event_id)
+    return await service.delete_event(user_id=user_id, event_id=event_id)
 
 
 

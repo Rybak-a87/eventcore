@@ -12,7 +12,7 @@ from starlette.responses import FileResponse
 from app.core.settings import settings
 from app.database.models.accounts import User
 from app.database.models.events import Event, EventType, EventImage
-from app.schemas.events import EventUpdate, EventCreate, EventImageRead, EventRead, EventTypeRead
+from app.schemas.events import EventUpdate, EventCreate, EventImageRead, EventRead, EventTypeRead, EventReadDetail
 from app.shared.exceptions import EventNotFound
 from app.tasks.email_tasks import send_event_email
 
@@ -35,18 +35,20 @@ class EventService:
         await self.session.refresh(event)
         return event
 
-    async def delete_events(self, user_id: int, event_id: int) -> dict[str, int]:
+    async def delete_event(self, user_id: int, event_id: int) -> dict[str, int]:
         deleted = await Event.delete(session=self.session, user_id=user_id, id=event_id)
+        if deleted == 0:
+            raise EventNotFound()
         return {"event_id": event_id, "deleted": deleted}
 
-    async def get_user_event(self, user_id: int, event_id: int) -> EventRead:
+    async def get_user_event(self, user_id: int, event_id: int) -> EventReadDetail:
         event = await Event.find_with_related_first(session=self.session, related=[EventType, EventImage],
                                                     self_filters={"user_id": user_id, "id": event_id},
                                                     strategy="prefetch")
         if event is None:
             raise EventNotFound()
-        setattr(event, "type", event.type.name)
-        return EventRead.model_validate(event)
+        setattr(event, "type_name", event.type.name)
+        return EventReadDetail.model_validate(event)
 
     async def get_user_events(self, user_id: int) -> List[EventRead]:
         events = await Event.find_with_related(session=self.session, related=[EventType, EventImage],

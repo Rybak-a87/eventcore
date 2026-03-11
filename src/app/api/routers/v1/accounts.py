@@ -43,7 +43,7 @@ async def update_user(
 async def delete_user(
     user_id: Annotated[int, Depends(get_current_user)],
     service: Annotated[UserService, Depends(get_user_service)]
-):
+) -> dict:
     """
     ## Delete current user
 

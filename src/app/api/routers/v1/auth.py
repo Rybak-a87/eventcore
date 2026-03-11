@@ -29,7 +29,7 @@ async def sign_up(
     
     :param payload:
     :param service:
-    :return: Token
+    :return: User
     """
     return await service.register_user(data=payload, response=response)
 
@@ -42,10 +42,10 @@ async def sign_in(
 ) -> UserRead:
     """
     ## Login user
-
+    
     :param payload:
     :param service:
-    :return: Token
+    :return: User
     """
     return await service.authenticate_user(data=payload, response=response)
 
@@ -82,7 +82,7 @@ async def sign_in(
 ) -> TokenResponse:
     """
     ## Login Admin
-
+    
     :param payload:
     :param service:
     :return: Token

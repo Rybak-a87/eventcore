@@ -5,14 +5,12 @@ from fastapi import UploadFile
 from pydantic import BaseModel, Field, field_serializer
 
 from app.core.settings import settings
-from app.database.models import EventType
 
 
 class EventImageRead(BaseModel):
     id: int = Field(..., title="Image ID")
     image_url: str = Field(..., title="Image URL")
     is_primary: bool = Field(..., title="Image primary status")
-    # event_id: int = Field(..., title="Event ID")
 
     model_config = {
         "extra": "forbid",  # for .model_dump()
@@ -23,6 +21,7 @@ class EventImageRead(BaseModel):
     def serialize_datetime(self, value: str):
         return f"{settings.domain}/media/users/{value}"
 
+
 class EventTypeRead(BaseModel):
     id: int = Field(...)
     name: str = Field(...)
@@ -31,10 +30,12 @@ class EventTypeRead(BaseModel):
         "from_attributes": True
     }
 
+
 class EventCreate(BaseModel):
     type: str = Field(min_length=1, max_length=255)
     title: str = Field(min_length=1, max_length=255)
     description: str | None = None
+    amount: float | None = None
     event_datetime: datetime
     is_email_sent: bool | None = None
 
@@ -47,9 +48,8 @@ class EventRead(BaseModel):
     id: int = Field(...)
     type_name: str =  Field(min_length=1, max_length=255)
     title: str = Field(min_length=1, max_length=255)
-    description: str | None = None
     event_datetime: datetime | None = None
-    # images: List[EventImageRead] | None = []
+    active: bool | None = None
 
     model_config = {
         "from_attributes": True
@@ -60,26 +60,24 @@ class EventRead(BaseModel):
         return value.strftime("%d.%m.%Y %H:%M:%S") if value else None
 
 
+class EventReadDetail(EventRead):
+    description: str | None = None
+    is_email_sent: bool | None = None
+    amount: float | None = None
+    images: List[EventImageRead] | None = []
+
+
 class EventUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     event_datetime: datetime | None = None
     type: str | None = None
+    amount: float | None = None
+    is_email_sent: bool | None = None
+    active: bool | None = None
+
 
     model_config = {
         "extra": "forbid",
         "from_attributes": True
-    }
-
-
-class EventsDelete(BaseModel):
-    event_ids: list[int]
-
-
-class EventPhotoResponse(BaseModel):
-    id: int
-    image_url: str
-
-    model_config = {
-        "from_attributes": True  # for EventPhotoResponse.model_validate(obj)
     }
