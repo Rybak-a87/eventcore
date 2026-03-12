@@ -60,7 +60,6 @@ async def create_event(
     data: EventCreate,
     user_id: Annotated[int, Depends(get_current_user)],
     service: Annotated[EventService, Depends(get_event_service)],
-    # images: List[UploadFile] | None = File(default=None),
 ) -> EventRead:
     """
     ## Create Event

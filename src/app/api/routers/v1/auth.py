@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, Form, Response, Request
 # from fastapi.security import OAuth2PasswordRequestForm
 
 from app.api.dependencies import get_auth_service, get_current_user
-from app.schemas.accounts import UserRead
-from app.schemas.auth import Authenticate, RegisterAuthenticate
+from app.schemas.accounts import UserReadDetail
+from app.schemas.auth import RegisterAuthenticate, PasswordUpdate
 from app.schemas.oauth2_form import OAuth2AdminForm
 from app.schemas.security import TokenResponse, AccessTokenResponse
 from app.services.auth import AuthService
@@ -18,12 +18,12 @@ router = APIRouter(
 )
 
 
-@router.post("/sign-up", response_model=UserRead, status_code=201)
+@router.post("/sign-up", response_model=UserReadDetail, status_code=201)
 async def sign_up(
     response: Response,
     payload: RegisterAuthenticate,
     service: Annotated[AuthService, Depends(get_auth_service)],
-) -> UserRead:
+) -> UserReadDetail:
     """
     ## Create new user
     
@@ -34,12 +34,12 @@ async def sign_up(
     return await service.register_user(data=payload, response=response)
 
 
-@router.post("/sign-in", response_model=UserRead)
+@router.post("/sign-in", response_model=UserReadDetail)
 async def sign_in(
     response: Response,
     payload: RegisterAuthenticate,
     service: Annotated[AuthService, Depends(get_auth_service)],
-) -> UserRead:
+) -> UserReadDetail:
     """
     ## Login user
     
@@ -73,6 +73,18 @@ async def refresh_access_token(
     ## Update Access Token
     """
     return await service.refresh_access_token(request=request, response=response, refresh_token=refresh_token)
+
+
+@router.post("/change-password")
+async def change_password(
+    data: PasswordUpdate,
+    user_id: Annotated[int, Depends(get_current_user)],
+    service: Annotated[AuthService, Depends(get_auth_service)],
+) -> dict[str, Any]:
+    """
+    ## Password Update
+    """
+    return await service.change_password(user_id=user_id, data=data)
 
 
 @router.post("/sign-in-admin", response_model=TokenResponse)

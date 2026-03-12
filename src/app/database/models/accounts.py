@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.enums import LanguageEnum
 from app.database.models.events import SharedEvent, Event
 from app.database.session import Base
-from app.schemas.accounts import UserRead
+from app.schemas.accounts import UserReadDetail
 
 
 class User(Base):
@@ -41,9 +41,9 @@ class User(Base):
         return events
 
 
-    async def get_contact_users(self, session: AsyncSession, accepted: bool = False) -> list["UserRead"]:
+    async def get_contact_users(self, session: AsyncSession, accepted: bool = False) -> list["UserReadDetail"]:
         contacts = await Contact.get(session=session, user_id=self.id, accepted=accepted)
-        return [UserRead.model_validate(c.contact_user) for c in contacts]
+        return [UserReadDetail.model_validate(c.contact_user) for c in contacts]
 
     def __repr__(self):
         return f"User ID: {self.id} - {self.email}"

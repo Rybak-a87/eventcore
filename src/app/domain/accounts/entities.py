@@ -1,27 +1,34 @@
 import re
-from dataclasses import dataclass
-
-from pydantic import EmailStr
 
 
 class WeakPasswordError(Exception):
-    pass
+    class WeakPassword(Exception):
+        def __init__(self, message: str):
+            self.message = message
+            super().__init__(message)
 
 
-@dataclass
-class PasswordEntity:
-    email: EmailStr
-    password: str
+class PasswordPolicy:
+    CHECKS = {
+        "uppercase letter": re.compile(r"[A-Z]"),
+        "lowercase letter": re.compile(r"[a-z]"),
+        "digit": re.compile(r"\d"),
+        "special character": re.compile(r"[!@#$%^&*(),.?'\":{}|<>]")
+    }
+    MIN_LENGTH = 8
 
-    def validate_password(self) -> None:
-        checks = {
-            "uppercase letter": r"[A-Z]",
-            "lowercase letter": r"[a-z]",
-            "digit": r"\d",
-            "special character": r"[!@#$%^&*(),.?'\":{}|<>]"
-        }
-        for error_name, pattern in checks.items():
-            if not re.search(pattern, self.password):
-                raise WeakPasswordError(f"Password must contain at least one {error_name}")
-        # if self.password == self.email:
-        #     raise WeakPasswordError("Email and password should not be the same.")
+    @classmethod
+    def validate(cls, password: str) -> None:
+        errors = []
+
+        if len(password) < cls.MIN_LENGTH:
+            errors.append(f"at least {cls.MIN_LENGTH} characters")
+
+        for name, pattern in cls.CHECKS.items():
+            if not pattern.search(password):
+                errors.append(name)
+
+        if errors:
+            raise WeakPasswordError(
+                "Password must contain: " + ", ".join(errors)
+            )

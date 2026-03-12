@@ -3,7 +3,7 @@ from typing import Annotated, Sequence
 from fastapi import APIRouter, Depends
 
 from app.api.dependencies import get_user_service, get_current_user
-from app.schemas.accounts import UserUpdate, UserRead
+from app.schemas.accounts import UserUpdate, UserReadDetail
 from app.services.accounts import UserService
 
 
@@ -14,11 +14,11 @@ router = APIRouter(
 )
 
 
-@router.get("/current-user", response_model=UserRead)
+@router.get("/current-user", response_model=UserReadDetail)
 async def current_user(
     user_id: Annotated[int, Depends(get_current_user)],
     service: Annotated[UserService, Depends(get_user_service)]
-) -> UserRead:
+) -> UserReadDetail:
     """
     ## Return current user
     
@@ -26,12 +26,12 @@ async def current_user(
     return await service.current_user(user_id=user_id)
 
 
-@router.patch("/current-user", response_model=UserUpdate)
+@router.patch("/current-user", response_model=UserReadDetail)
 async def update_user(
     data: UserUpdate,
     user_id: Annotated[int, Depends(get_current_user)],
     service: Annotated[UserService, Depends(get_user_service)]
-):
+) -> UserReadDetail:
     """
     ## Update current user
 
@@ -51,11 +51,11 @@ async def delete_user(
     return await service.delete_user(user_id=user_id)
 
 
-# @router.post("/list", response_model=Sequence[UserRead])
+# @router.post("/list", response_model=Sequence[UserReadDetail])
 async def get_users(
-    data: UserRead,
+    data: UserReadDetail,
     service: Annotated[UserService, Depends(get_user_service)]
-) -> Sequence[UserRead]:
+) -> Sequence[UserReadDetail]:
     """
     ## Return all users
 
@@ -63,14 +63,14 @@ async def get_users(
     return await service.get_users(data=data)
 
 
-# @router.get("/list", response_model=list[UserRead])
+# @router.get("/list", response_model=list[UserReadDetail])
 # async def get_users(
 #         username: str | None = Query(default=None),
 #         email: str | None = Query(default=None),
 #         phone_number: str | None = Query(default=None),
 #         service: Annotated[UserService, Depends(get_user_service)] = None
 # ):
-#     data = UserRead(
+#     data = UserReadDetail(
 #         username=username,
 #         email=email,
 #         phone_number=phone_number

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, model_validator
 
 
 class RegisterAuthenticate(BaseModel):
@@ -10,9 +10,13 @@ class RegisterAuthenticate(BaseModel):
     )
 
 
-class Authenticate(BaseModel):
-    login: EmailStr
-    password: str = Field(
-        min_length=3,
-        max_length=72,
-    )
+class PasswordUpdate(BaseModel):
+    current_password: str = Field(min_length=3, max_length=72)
+    new_password: str = Field(min_length=3, max_length=72)
+    confirm_new_password: str = Field(min_length=3, max_length=72)
+
+    @model_validator(mode="after")
+    def passwords_match(self):
+        if self.new_password != self.confirm_new_password:
+            raise ValueError("Passwords do not match")
+        return self

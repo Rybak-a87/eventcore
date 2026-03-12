@@ -46,6 +46,15 @@ class PasswordMustBeDifferent(HTTPException):
         )
 
 
+class PasswordMustBeDifferent(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be different",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
 class InvalidToken(HTTPException):
     def __init__(self):
         super().__init__(

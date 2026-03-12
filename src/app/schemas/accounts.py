@@ -32,7 +32,7 @@ class UsersUpdate(BaseModel):
     # }
 
 
-class UserRead(BaseModel):
+class UserReadDetail(BaseModel):
     id: int
     email: str  | None = None
     username: str  | None = None
@@ -41,7 +41,6 @@ class UserRead(BaseModel):
     phone_number: str  | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    access_token: str | None = None
 
     model_config = {
         "from_attributes": True

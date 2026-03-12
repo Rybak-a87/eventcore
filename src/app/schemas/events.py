@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import Optional, List
 
-from fastapi import UploadFile
 from pydantic import BaseModel, Field, field_serializer
 
 from app.core.settings import settings
@@ -35,7 +34,7 @@ class EventCreate(BaseModel):
     type: str = Field(min_length=1, max_length=255)
     title: str = Field(min_length=1, max_length=255)
     description: str | None = None
-    amount: float | None = None
+    price: float | None = None
     event_datetime: datetime
     is_email_sent: bool | None = None
 
@@ -63,7 +62,7 @@ class EventRead(BaseModel):
 class EventReadDetail(EventRead):
     description: str | None = None
     is_email_sent: bool | None = None
-    amount: float | None = None
+    price: float | None = None
     images: List[EventImageRead] | None = []
 
 
@@ -72,7 +71,7 @@ class EventUpdate(BaseModel):
     description: str | None = None
     event_datetime: datetime | None = None
     type: str | None = None
-    amount: float | None = None
+    price: float | None = None
     is_email_sent: bool | None = None
     active: bool | None = None
 

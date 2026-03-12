@@ -13,7 +13,7 @@ class Event(Base):
     description: Mapped[str | None] = mapped_column(String(5000), nullable=True)
     event_datetime: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     is_email_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
-    amount: Mapped[float] = mapped_column(Float, nullable=True)
+    price: Mapped[float] = mapped_column(Float, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 
     type_id: Mapped[int] = mapped_column(ForeignKey("event_types.id", ondelete="RESTRICT"), nullable=False, index=True)
