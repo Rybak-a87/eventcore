@@ -21,19 +21,25 @@ class EventService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def update_event(self, user_id: int, event_id: int, data: EventUpdate) -> Event | None:
+    async def update_event(self, user_id: int, event_id: int, data: EventUpdate) -> EventReadDetail:
         data_dict = data.model_dump(exclude_unset=True, exclude={"type"})
-        if data.type:
+        event = await Event.find_with_related_first(session=self.session, related=[EventType, EventImage],
+                                                    self_filters={"user_id": user_id, "id": event_id},
+                                                    strategy="prefetch")
+        if data.type_name:
             event_type = await (EventType
-                                .find_first(session=self.session, name=data.type, user_id__in=[user_id, None]))
-            if event_type: data_dict["type_id"] = event_type.id
+                                .find_first(session=self.session, name=data.type_name, user_id__in=[user_id, None]))
+            if not event_type:
+                event_type = await EventType.create(session=self.session, user_id=user_id, name=data.type_name)
 
-        event = await Event.get_first(session=self.session, id=event_id)
+            data_dict["type_id"] = event_type.id
+
         for field, value in data_dict.items():
             setattr(event, field, value)
         await self.session.commit()
         await self.session.refresh(event)
-        return event
+        if data.type_name: setattr(event, "type_name", event_type.name)
+        return EventReadDetail.model_validate(event)
 
     async def delete_event(self, user_id: int, event_id: int) -> dict[str, int]:
         deleted = await Event.delete(session=self.session, user_id=user_id, id=event_id)
@@ -58,10 +64,10 @@ class EventService:
         return [EventRead.model_validate(event) for event in events]
 
     async def create_event(self, user_id: int, data: EventCreate) -> EventRead:
-        data_dict = data.model_dump(exclude_unset=True, exclude={"type"})
-        event_type = await EventType.find_first(session=self.session, user_id__in=[user_id, None], name=data.type)
+        data_dict = data.model_dump(exclude_unset=True, exclude={"type_name"})
+        event_type = await EventType.find_first(session=self.session, user_id__in=[user_id, None], name=data.type_name)
         if not event_type:
-            event_type = await EventType.create(session=self.session, user_id=user_id, name=data.type)
+            event_type = await EventType.create(session=self.session, user_id=user_id, name=data.type_name)
         data_dict["type_id"] = event_type.id
         event, _ = await Event.update_or_create(session=self.session, user_id=user_id, **data_dict)
         setattr(event, "type_name", event_type.name)

@@ -82,23 +82,13 @@ async def upload_event_images(
     return await service.upload_images(user_id=user_id, event_id=event_id, files=images)
 
 
-# @router.get("/media/{event_id}", response_model=List[EventImageRead])
-# async def get_media_files(
-#     event_id: int,
-#     user_id: Annotated[int, Depends(get_current_user)],
-#     service: Annotated[EventService, Depends(get_event_service)]
-# ) -> List[EventImageRead]:
-#
-#     return await service.get_images(user_id=user_id, event_id=event_id)
-
-
-# @router.patch("/{event_id}")
+@router.patch("/{event_id}", response_model=EventReadDetail)
 async def update_event(
     event_id: int,
     data: EventUpdate,
     user_id: Annotated[int, Depends(get_current_user)],
     service: Annotated[EventService, Depends(get_event_service)]
-):
+) -> EventReadDetail:
     """
     ## Update Event
 

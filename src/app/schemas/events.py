@@ -31,7 +31,7 @@ class EventTypeRead(BaseModel):
 
 
 class EventCreate(BaseModel):
-    type: str = Field(min_length=1, max_length=255)
+    type_name: str = Field(min_length=1, max_length=255)
     title: str = Field(min_length=1, max_length=255)
     description: str | None = None
     price: float | None = None
@@ -70,7 +70,7 @@ class EventUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     event_datetime: datetime | None = None
-    type: str | None = None
+    type_name: str | None = None
     price: float | None = None
     is_email_sent: bool | None = None
     active: bool | None = None
