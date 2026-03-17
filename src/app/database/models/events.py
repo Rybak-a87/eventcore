@@ -31,7 +31,7 @@ class Event(Base):
         return self.title
 
     __table_args__ = (
-        UniqueConstraint("title", "user_id", name="uq_event_title_user"),
+        UniqueConstraint("title", "type_id", "user_id", name="uq_event_title_type_user"),
         Index("ix_event_user_active", "user_id", "active"),
         Index("ix_event_type_datetime", "type_id", "event_datetime"),
     )

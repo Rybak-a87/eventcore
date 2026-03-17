@@ -82,6 +82,14 @@ class EventNotFound(HTTPException):
         )
 
 
+class EventAlreadyExists(HTTPException):
+    def __init__(self, title, type_name):
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Event {title} in category {type_name} already exists.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
 # class NotAuthenticatedAdmin(HTTPException):
 #     def __init__(self):
 #         super().__init__(

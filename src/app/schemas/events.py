@@ -4,6 +4,7 @@ from typing import Optional, List
 from pydantic import BaseModel, Field, field_serializer
 
 from app.core.settings import settings
+from app.database.models import EventType
 
 
 class EventImageRead(BaseModel):

@@ -13,7 +13,7 @@ from app.core.settings import settings
 from app.database.models.accounts import User
 from app.database.models.events import Event, EventType, EventImage
 from app.schemas.events import EventUpdate, EventCreate, EventImageRead, EventRead, EventTypeRead, EventReadDetail
-from app.shared.exceptions import EventNotFound
+from app.shared.exceptions import EventNotFound, EventAlreadyExists
 from app.tasks.email_tasks import send_event_email
 
 
@@ -21,12 +21,26 @@ class EventService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
+    async def check_event_type_title(self, user_id: int, event_type_name: str, event_title: str) -> None:
+        events = await Event.find_join(session=self.session, related=EventType,
+                                       self_filters={"user_id": user_id, "title": event_title},
+                                       related_filters={"name": event_type_name})
+        if len(events) > 0:
+            raise EventAlreadyExists(title=event_title, type_name=event_type_name)
+
     async def update_event(self, user_id: int, event_id: int, data: EventUpdate) -> EventReadDetail:
-        data_dict = data.model_dump(exclude_unset=True, exclude={"type"})
         event = await Event.find_with_related_first(session=self.session, related=[EventType, EventImage],
                                                     self_filters={"user_id": user_id, "id": event_id},
                                                     strategy="prefetch")
-        if data.type_name:
+
+        update_type = data.type_name and data.type_name != event.type.name
+        update_title = data.title and data.title != event.title
+        if update_type or update_title:
+            await self.check_event_type_title(user_id=user_id, event_type_name=data.type_name or event.type.name,
+                                              event_title=data.title or event.title)
+
+        data_dict = data.model_dump(exclude_unset=True, exclude={"type_name"})
+        if update_type:
             event_type = await (EventType
                                 .find_first(session=self.session, name=data.type_name, user_id__in=[user_id, None]))
             if not event_type:
@@ -38,7 +52,7 @@ class EventService:
             setattr(event, field, value)
         await self.session.commit()
         await self.session.refresh(event)
-        if data.type_name: setattr(event, "type_name", event_type.name)
+        setattr(event, "type_name", event.type.name)
         return EventReadDetail.model_validate(event)
 
     async def delete_event(self, user_id: int, event_id: int) -> dict[str, int]:
@@ -64,13 +78,18 @@ class EventService:
         return [EventRead.model_validate(event) for event in events]
 
     async def create_event(self, user_id: int, data: EventCreate) -> EventRead:
-        data_dict = data.model_dump(exclude_unset=True, exclude={"type_name"})
+        await self.check_event_type_title(user_id=user_id, event_type_name=data.type_name, event_title=data.title)
+
         event_type = await EventType.find_first(session=self.session, user_id__in=[user_id, None], name=data.type_name)
         if not event_type:
             event_type = await EventType.create(session=self.session, user_id=user_id, name=data.type_name)
+
+        data_dict = data.model_dump(exclude_unset=True, exclude={"type_name"})
         data_dict["type_id"] = event_type.id
-        event, _ = await Event.update_or_create(session=self.session, user_id=user_id, **data_dict)
+
+        event = await Event.create(session=self.session, user_id=user_id, **data_dict)
         setattr(event, "type_name", event_type.name)
+
         # if files:
         #     await self.__upload_images(user_id=user_id, event=event, files=files)
 
